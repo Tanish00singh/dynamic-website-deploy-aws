@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VitalCalc — Health Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Epilogue:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0b0e14;--panel:#131720;--card:#1a1f2e;--border:#232840;
+  --accent:#5e6ef7;--green:#22d3a5;--amber:#f5a623;--red:#f05a5a;--blue:#60aaff;
+  --text:#e8eaf6;--muted:#636b8a;--radius:16px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Epilogue',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 60% -20%,rgba(94,110,247,0.12),transparent),
+             radial-gradient(ellipse 60% 50% at -10% 80%,rgba(34,211,165,0.08),transparent);
+  pointer-events:none;z-index:0;
+}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px 80px;position:relative;z-index:1;}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:28px 0 40px;border-bottom:1px solid var(--border);margin-bottom:48px;}
+.logo{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;letter-spacing:.01em;}
+.logo span{color:var(--accent);}
+.header-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;border:1px solid var(--border);padding:5px 14px;border-radius:100px;}
+
+/* LAYOUT */
+.main-grid{display:grid;grid-template-columns:420px 1fr;gap:28px;align-items:start;}
+@media(max-width:860px){.main-grid{grid-template-columns:1fr;}}
+
+/* FORM PANEL */
+.form-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:32px;position:sticky;top:24px;}
+.panel-title{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700;margin-bottom:6px;}
+.panel-sub{font-size:.85rem;color:var(--muted);margin-bottom:28px;line-height:1.6;}
+.field{margin-bottom:20px;}
+label{display:block;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+input[type=number],select{
+  width:100%;background:var(--card);border:1px solid var(--border);
+  color:var(--text);font-family:'Epilogue',sans-serif;font-size:.95rem;
+  padding:12px 16px;border-radius:10px;outline:none;
+  transition:border-color .2s,box-shadow .2s;appearance:none;-webkit-appearance:none;
+}
+input[type=number]:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(94,110,247,.15);}
+select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23636b8a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:40px;cursor:pointer;
+}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.gender-toggle{display:flex;gap:8px;}
+.gender-btn{flex:1;background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:11px;font-family:'Epilogue',sans-serif;font-size:.9rem;cursor:pointer;text-align:center;transition:all .2s;}
+.gender-btn.active{border-color:var(--accent);color:var(--text);background:rgba(94,110,247,.12);}
+.unit-row{display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:6px;gap:4px;margin-bottom:24px;}
+.unit-btn{flex:1;background:transparent;border:none;color:var(--muted);font-family:'Epilogue',sans-serif;font-size:.85rem;padding:7px;border-radius:7px;cursor:pointer;transition:all .2s;}
+.unit-btn.active{background:var(--accent);color:#fff;}
+.calc-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:15px;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.03em;cursor:pointer;transition:transform .15s,box-shadow .2s;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:8px;}
+.calc-btn:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(94,110,247,.35);}
+.calc-btn:active{transform:translateY(0);}
+.calc-btn:disabled{background:var(--muted);cursor:not-allowed;transform:none;box-shadow:none;}
+.spin{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none;}
+.err-box{background:rgba(240,90,90,.1);border:1px solid rgba(240,90,90,.3);border-radius:10px;padding:12px 16px;color:#f05a5a;font-size:.85rem;margin-top:12px;display:none;line-height:1.5;}
+
+/* PLACEHOLDER */
+.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:400px;text-align:center;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);color:var(--muted);gap:12px;}
+.ph-icon{font-size:3rem;opacity:.3;}
+.ph-txt{font-size:.9rem;max-width:220px;line-height:1.6;}
+
+/* RESULTS */
+.results-grid{display:none;flex-direction:column;gap:16px;}
+.results-grid.show{display:flex;}
+
+/* BMI HERO */
+.bmi-hero{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:28px 32px;display:flex;align-items:center;gap:28px;animation:slideIn .4s ease;}
+@media(max-width:500px){.bmi-hero{flex-direction:column;text-align:center;}}
+.bmi-ring{width:110px;height:110px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:3px solid var(--green);}
+.bmi-num{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;line-height:1;}
+.bmi-lbl{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;margin-top:2px;opacity:.7;}
+.bmi-cat{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700;margin-bottom:6px;}
+.bmi-dsc{font-size:.875rem;color:var(--muted);line-height:1.6;margin-bottom:14px;}
+.scale-bar{height:8px;border-radius:100px;background:linear-gradient(to right,#60aaff 0%,#22d3a5 27%,#f5a623 60%,#f05a5a 100%);position:relative;}
+.needle{position:absolute;top:-4px;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--bg);transform:translateX(-50%);transition:left .6s cubic-bezier(.175,.885,.32,1.275);box-shadow:0 0 0 3px rgba(255,255,255,.2);}
+.scale-labels{display:flex;justify-content:space-between;margin-top:5px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);}
+
+/* STAT CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;animation:slideIn .4s ease .1s both;}
+@media(max-width:600px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+.sc{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px 16px;}
+.sc-lbl{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.sc-val{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:700;line-height:1;margin-bottom:3px;}
+.sc-sub{font-size:.75rem;color:var(--muted);}
+
+/* CALORIE CARD */
+.cal-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:24px 28px;animation:slideIn .4s ease .15s both;}
+.card-ttl{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.cal-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+.cal-row:last-child{border-bottom:none;}
+.cal-nm{font-size:.9rem;}
+.cal-bw{flex:1;margin:0 16px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.cal-b{height:100%;border-radius:2px;transition:width .6s ease;}
+.cal-badge{font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:500;white-space:nowrap;}
+
+/* MACRO DONUT */
+.macro-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:24px 28px;animation:slideIn .4s ease .2s both;}
+.macro-inner{display:flex;align-items:center;gap:24px;margin-top:14px;}
+@media(max-width:400px){.macro-inner{flex-direction:column;}}
+.donut-wrap{position:relative;width:110px;height:110px;flex-shrink:0;}
+.donut-wrap svg{transform:rotate(-90deg);}
+.dc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Syne',sans-serif;}
+.dc-n{font-size:1.1rem;font-weight:700;}
+.dc-l{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}
+.macro-list{flex:1;}
+.m-item{display:flex;align-items:center;gap:10px;margin-bottom:11px;}
+.m-item:last-child{margin-bottom:0;}
+.m-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.m-name{font-size:.85rem;color:var(--muted);flex:1;}
+.m-g{font-family:'JetBrains Mono',monospace;font-size:.9rem;font-weight:500;}
+
+/* BOTTOM GRID */
+.bot-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;animation:slideIn .4s ease .25s both;}
+@media(max-width:540px){.bot-grid{grid-template-columns:1fr;}}
+.water-card,.goal-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;}
+.glasses-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px;}
+.glass{width:20px;height:26px;border:1.5px solid var(--blue);border-radius:2px 2px 4px 4px;background:rgba(96,170,255,.35);}
+
+/* WEIGHT RANGE CARD */
+.wt-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;animation:slideIn .4s ease .2s both;}
+
+/* TIPS */
+.tips-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:24px 28px;animation:slideIn .4s ease .3s both;}
+.tip-row{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:.875rem;line-height:1.6;color:var(--muted);}
+.tip-row:last-child{border-bottom:none;}
+.tip-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:8px;}
+
+/* TWO COL */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:540px){.two-col{grid-template-columns:1fr;}}
+
+/* ANIMS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px);}to{opacity:1;transform:translateX(0);}}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="logo">Vital<span>Calc</span></div>
+  <div class="header-tag">Health Dashboard</div>
+</header>
+
+<div class="main-grid">
+
+  <!-- ═══ LEFT — FORM ═══ -->
+  <div class="form-panel">
+    <div class="panel-title">Your Body Stats</div>
+    <div class="panel-sub">Enter your details below. All calculations run on our AWS Lambda backend — no third-party APIs.</div>
+
+    <div class="unit-row">
+      <button class="unit-btn active" onclick="setUnit('metric')">Metric (kg / cm)</button>
+      <button class="unit-btn"        onclick="setUnit('imperial')">Imperial (lbs / ft)</button>
+    </div>
+
+    <div class="field">
+      <label>Gender</label>
+      <div class="gender-toggle">
+        <button class="gender-btn active" onclick="setGender('male',this)">♂ Male</button>
+        <button class="gender-btn"        onclick="setGender('female',this)">♀ Female</button>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Age (years)</label>
+        <input type="number" id="age" placeholder="25" min="1" max="120"/>
+      </div>
+      <div class="field">
+        <label id="wt-lbl">Weight (kg)</label>
+        <input type="number" id="weight" placeholder="70" step="0.1"/>
+      </div>
+    </div>
+
+    <!-- metric height -->
+    <div class="field" id="ht-metric">
+      <label>Height (cm)</label>
+      <input type="number" id="height-cm" placeholder="175" step="0.1"/>
+    </div>
+    <!-- imperial height -->
+    <div class="row2" id="ht-imperial" style="display:none">
+      <div class="field">
+        <label>Feet</label>
+        <input type="number" id="ht-ft" placeholder="5" min="1" max="8"/>
+      </div>
+      <div class="field">
+        <label>Inches</label>
+        <input type="number" id="ht-in" placeholder="9" min="0" max="11"/>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Activity Level</label>
+      <select id="activity">
+        <option value="sedentary">Sedentary — desk job, no exercise</option>
+        <option value="light">Light — exercise 1-3 days/week</option>
+        <option value="moderate" selected>Moderate — exercise 3-5 days/week</option>
+        <option value="active">Active — hard exercise 6-7 days/week</option>
+        <option value="very_active">Very Active — physical job + daily training</option>
+      </select>
+    </div>
+
+    <button class="calc-btn" id="calcBtn" onclick="calculate()">
+      <div class="spin" id="spinner"></div>
+      <span id="btnTxt">Calculate My Results →</span>
+    </button>
+    <div class="err-box" id="errBox"></div>
+  </div>
+
+  <!-- ═══ RIGHT — RESULTS ═══ -->
+  <div>
+
+    <div class="placeholder" id="placeholder">
+      <div class="ph-icon">📊</div>
+      <div class="ph-txt">Fill in your details and hit Calculate to see your full health dashboard.</div>
+    </div>
+
+    <div class="results-grid" id="resultsGrid">
+
+      <!-- BMI -->
+      <div class="bmi-hero">
+        <div class="bmi-ring" id="bmiRing">
+          <div class="bmi-num" id="bmiNum">–</div>
+          <div class="bmi-lbl">BMI</div>
+        </div>
+        <div style="flex:1">
+          <div class="bmi-cat" id="bmiCat">–</div>
+          <div class="bmi-dsc" id="bmiDsc">–</div>
+          <div class="scale-bar">
+            <div class="needle" id="needle" style="left:30%"></div>
+          </div>
+          <div class="scale-labels">
+            <span>Underweight</span><span>Normal</span><span>Overweight</span><span>Obese</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick stats -->
+      <div class="stat-grid">
+        <div class="sc">
+          <div class="sc-lbl">BMR (resting)</div>
+          <div class="sc-val" id="sBmr" style="color:var(--accent)">–</div>
+          <div class="sc-sub">kcal/day at full rest</div>
+        </div>
+        <div class="sc">
+          <div class="sc-lbl">TDEE (active)</div>
+          <div class="sc-val" id="sTdee" style="color:var(--green)">–</div>
+          <div class="sc-sub">kcal/day to maintain</div>
+        </div>
+        <div class="sc">
+          <div class="sc-lbl">Est. Body Fat</div>
+          <div class="sc-val" id="sBf" style="color:var(--amber)">–</div>
+          <div class="sc-sub" id="sBfCat">–</div>
+        </div>
+      </div>
+
+      <!-- Calorie goals -->
+      <div class="cal-card">
+        <div class="card-ttl">🎯 Daily Calorie Goals</div>
+        <div class="cal-row">
+          <span class="cal-nm">Lose weight</span>
+          <div class="cal-bw"><div class="cal-b" id="cLoseBar" style="background:var(--blue)"></div></div>
+          <span class="cal-badge" id="cLose" style="color:var(--blue)">–</span>
+        </div>
+        <div class="cal-row">
+          <span class="cal-nm">Maintain weight</span>
+          <div class="cal-bw"><div class="cal-b" id="cMaintBar" style="background:var(--green);width:100%"></div></div>
+          <span class="cal-badge" id="cMaint" style="color:var(--green)">–</span>
+        </div>
+        <div class="cal-row">
+          <span class="cal-nm">Gain muscle</span>
+          <div class="cal-bw"><div class="cal-b" id="cGainBar" style="background:var(--amber)"></div></div>
+          <span class="cal-badge" id="cGain" style="color:var(--amber)">–</span>
+        </div>
+      </div>
+
+      <!-- Macros + weight range -->
+      <div class="two-col">
+        <div class="macro-card">
+          <div class="card-ttl">🍽 Daily Macros</div>
+          <div class="macro-inner">
+            <div class="donut-wrap">
+              <svg width="110" height="110" viewBox="0 0 110 110">
+                <circle cx="55" cy="55" r="44" fill="none" stroke="var(--border)" stroke-width="12"/>
+                <circle id="dP" cx="55" cy="55" r="44" fill="none" stroke="#5e6ef7" stroke-width="12" stroke-dasharray="276.46" stroke-dashoffset="276.46" stroke-linecap="round" style="transform-origin:55px 55px"/>
+                <circle id="dF" cx="55" cy="55" r="44" fill="none" stroke="#f5a623" stroke-width="12" stroke-dasharray="276.46" stroke-dashoffset="276.46" stroke-linecap="round" style="transform-origin:55px 55px"/>
+                <circle id="dC" cx="55" cy="55" r="44" fill="none" stroke="#22d3a5" stroke-width="12" stroke-dasharray="276.46" stroke-dashoffset="276.46" stroke-linecap="round" style="transform-origin:55px 55px"/>
+              </svg>
+              <div class="dc">
+                <div class="dc-n" id="dTotal">–</div>
+                <div class="dc-l">kcal</div>
+              </div>
+            </div>
+            <div class="macro-list">
+              <div class="m-item"><div class="m-dot" style="background:#5e6ef7"></div><div class="m-name">Protein</div><div class="m-g" id="mP">–g</div></div>
+              <div class="m-item"><div class="m-dot" style="background:#f5a623"></div><div class="m-name">Fat</div><div class="m-g" id="mF">–g</div></div>
+              <div class="m-item"><div class="m-dot" style="background:#22d3a5"></div><div class="m-name">Carbs</div><div class="m-g" id="mC">–g</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="wt-card">
+          <div class="card-ttl">⚖️ Healthy Weight Range</div>
+          <div class="sc-lbl" style="margin-bottom:6px">Based on your height</div>
+          <div style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700;color:var(--green);margin-bottom:16px" id="wtRange">–</div>
+          <div class="sc-lbl" style="margin-bottom:6px">Your goal</div>
+          <div style="font-size:.85rem;color:var(--muted);line-height:1.6" id="wtGoal">–</div>
+          <div style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--accent)" id="wtWeeks"></div>
+        </div>
+      </div>
+
+      <!-- Water + goal -->
+      <div class="bot-grid">
+        <div class="water-card">
+          <div class="card-ttl">💧 Daily Water Intake</div>
+          <div style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:700;color:var(--blue)" id="wLiters">–L</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:8px" id="wGlasses">–</div>
+          <div class="glasses-row" id="glassIcons"></div>
+        </div>
+        <div class="goal-card">
+          <div class="card-ttl">🏁 Estimated Goal</div>
+          <div style="font-size:.875rem;color:var(--muted);line-height:1.7" id="goalTxt">–</div>
+        </div>
+      </div>
+
+      <!-- Tips -->
+      <div class="tips-card">
+        <div class="card-ttl">💡 Personalized Recommendations</div>
+        <div id="tipsList"></div>
+      </div>
+
+    </div><!-- /resultsGrid -->
+  </div>
+</div><!-- /main-grid -->
+</div><!-- /wrap -->
+
+<script>
+/* ─────────────────────────────────────────────
+   STEP 1 — After deploying Lambda + API Gateway,
+   replace the URL below with YOUR API Gateway URL.
+
+   It will look like:
+   https://abc123xyz.execute-api.us-east-1.amazonaws.com/calculate
+──────────────────────────────────────────────── */
+const API_URL = "https://b76pxinijh.execute-api.ap-south-1.amazonaws.com/calculate";
+
+
+/* ─── UI STATE ─── */
+let unit = 'metric', gender = 'male';
+
+function setUnit(u) {
+  unit = u;
+  document.querySelectorAll('.unit-btn').forEach((b,i) =>
+    b.classList.toggle('active', (i===0&&u==='metric')||(i===1&&u==='imperial')));
+  document.getElementById('ht-metric').style.display   = u==='metric'   ? '' : 'none';
+  document.getElementById('ht-imperial').style.display = u==='imperial' ? '' : 'none';
+  document.getElementById('wt-lbl').textContent = u==='metric' ? 'Weight (kg)' : 'Weight (lbs)';
+  const wp = document.getElementById('weight');
+  wp.placeholder = u==='metric' ? '70' : '154';
+}
+
+function setGender(g, btn) {
+  gender = g;
+  document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* ─── CALCULATE ─── */
+async function calculate() {
+  clearErr();
+  const age = parseFloat(document.getElementById('age').value);
+  let wt    = parseFloat(document.getElementById('weight').value);
+  let htCm;
+
+  if (unit === 'metric') {
+    htCm = parseFloat(document.getElementById('height-cm').value);
+  } else {
+    const ft = parseFloat(document.getElementById('ht-ft').value)||0;
+    const ins= parseFloat(document.getElementById('ht-in').value)||0;
+    htCm = (ft * 12 + ins) * 2.54;
+    wt   = wt * 0.453592;
+  }
+
+  const activity = document.getElementById('activity').value;
+
+  if (!age||!wt||!htCm) { showErr("Please fill in all fields."); return; }
+  if (isNaN(age)||isNaN(wt)||isNaN(htCm)) { showErr("Please enter valid numbers."); return; }
+
+  setLoading(true);
+
+  try {
+    const res  = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weight_kg: wt, height_cm: htCm, age, gender, activity })
+    });
+    const data = await res.json();
+    if (!res.ok) { showErr(data.error || "Server error. Please try again."); return; }
+    render(data);
+  } catch(e) {
+    showErr("Cannot reach server. Make sure you updated API_URL at the top of this file with your API Gateway URL.");
+  } finally {
+    setLoading(false);
+  }
+}
+
+/* ─── RENDER ─── */
+function render(d) {
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('resultsGrid').classList.add('show');
+
+  /* BMI */
+  const bmi = d.bmi.value;
+  const clr = {green:'var(--green)',blue:'var(--blue)',orange:'var(--amber)',red:'var(--red)'}[d.bmi.color]||'var(--muted)';
+  set('bmiNum', bmi);
+  set('bmiCat', d.bmi.category);
+  style('bmiCat','color', clr);
+  style('bmiRing','borderColor', clr);
+  style('bmiNum','color', clr);
+
+  const desc = {
+    'Underweight':      'Below the healthy range. Focus on nutrient-dense foods and strength training.',
+    'Normal weight':    'Great — you are in the healthy BMI range. Keep it up!',
+    'Overweight':       'Slightly above healthy. A moderate calorie deficit + exercise can help.',
+    'Obese (Class I)':  'Elevated health risk. A structured plan with diet and exercise can make a big difference.',
+    'Obese (Class II)': 'Significant health risks. Consider working with a healthcare professional.',
+    'Obese (Class III)':'High risk category. Medical guidance is strongly recommended.'
+  };
+  set('bmiDsc', desc[d.bmi.category]||'');
+
+  /* needle: BMI 15 → 0%, BMI 40 → 100% */
+  const pct = Math.min(100, Math.max(0, ((bmi-15)/25)*100));
+  document.getElementById('needle').style.left = pct + '%';
+
+  /* Stats */
+  set('sBmr',  d.bmr.toLocaleString());
+  set('sTdee', d.tdee.toLocaleString());
+  set('sBf',   d.body_fat.estimated_pct + '%');
+  set('sBfCat',d.body_fat.category);
+
+  /* Calories */
+  const max = d.calories.gain;
+  set('cLose',  d.calories.lose.toLocaleString()     + ' kcal');
+  set('cMaint', d.calories.maintain.toLocaleString() + ' kcal');
+  set('cGain',  d.calories.gain.toLocaleString()     + ' kcal');
+  document.getElementById('cLoseBar').style.width  = (d.calories.lose/max*100)+'%';
+  document.getElementById('cMaintBar').style.width = (d.calories.maintain/max*100)+'%';
+  document.getElementById('cGainBar').style.width  = '100%';
+
+  /* Macros donut */
+  const p=d.macros.protein_g, f=d.macros.fat_g, c=d.macros.carbs_g;
+  const tot=(p*4)+(f*9)+(c*4);
+  const C=276.46;
+  const pP=p*4/tot, fP=f*9/tot;
+
+  document.getElementById('dP').style.strokeDashoffset = C*(1-pP);
+  document.getElementById('dP').style.transform = 'rotate(0deg)';
+
+  document.getElementById('dF').style.strokeDashoffset = C*(1-fP);
+  document.getElementById('dF').style.transform = `rotate(${pP*360}deg)`;
+
+  const cP=c*4/tot;
+  document.getElementById('dC').style.strokeDashoffset = C*(1-cP);
+  document.getElementById('dC').style.transform = `rotate(${(pP+fP)*360}deg)`;
+
+  set('dTotal', Math.round(tot).toLocaleString());
+  set('mP', p+'g'); set('mF', f+'g'); set('mC', c+'g');
+
+  /* Weight range */
+  const [lo,hi] = d.ideal_weight.healthy_bmi_range_kg;
+  set('wtRange', lo+' – '+hi+' kg');
+  set('wtGoal',  d.weight_goal.message);
+  set('wtWeeks', d.weight_goal.weeks_estimate>0
+    ? '⏱ Est. '+d.weight_goal.weeks_estimate+' weeks at healthy pace'
+    : '✓ You are at your ideal weight!');
+
+  /* Water */
+  set('wLiters',  d.water.liters+'L');
+  set('wGlasses', d.water.glasses+' glasses of 250 ml each');
+  const gi = document.getElementById('glassIcons');
+  gi.innerHTML='';
+  for(let i=0;i<Math.min(d.water.glasses,16);i++){
+    const g=document.createElement('div');
+    g.className='glass';
+    gi.appendChild(g);
+  }
+
+  /* Goal */
+  document.getElementById('goalTxt').innerHTML =
+    '<strong style="color:var(--text)">'+d.weight_goal.message+'</strong><br><br>'+
+    'At <strong style="color:var(--accent)">'+d.calories.lose.toLocaleString()+' kcal/day</strong> you\'d reach your goal in approximately '+
+    '<strong style="color:var(--green)">'+d.weight_goal.weeks_estimate+' weeks</strong>.';
+
+  /* Tips */
+  const tl = document.getElementById('tipsList');
+  tl.innerHTML='';
+  d.tips.forEach(t=>{
+    const row=document.createElement('div');
+    row.className='tip-row';
+    row.innerHTML='<div class="tip-dot"></div><div>'+t+'</div>';
+    tl.appendChild(row);
+  });
+
+  if(window.innerWidth<860)
+    document.getElementById('resultsGrid').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ─── HELPERS ─── */
+function set(id,v){document.getElementById(id).textContent=v;}
+function style(id,p,v){document.getElementById(id).style[p]=v;}
+function setLoading(on){
+  document.getElementById('spinner').style.display=on?'block':'none';
+  document.getElementById('btnTxt').textContent=on?'Calculating…':'Calculate My Results →';
+  document.getElementById('calcBtn').disabled=on;
+}
+function showErr(m){const b=document.getElementById('errBox');b.textContent=m;b.style.display='block';}
+function clearErr(){document.getElementById('errBox').style.display='none';}
+</script>
+</body>
+</html>
